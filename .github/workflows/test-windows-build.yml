@@ -1,0 +1,105 @@
+name: Test Windows Build (Simple)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.13.0'
+        channel: 'stable'
+    
+    - name: Test Flutter
+      run: |
+        Write-Host "Testing Flutter installation..."
+        flutter --version
+        flutter doctor --verbose
+      shell: powershell
+    
+    - name: Enable Windows
+      run: |
+        Write-Host "Enabling Windows desktop support..."
+        flutter config --enable-windows-desktop
+        flutter config --list
+      shell: powershell
+    
+    - name: Create Platform
+      run: |
+        Write-Host "Creating Windows platform files..."
+        flutter create --platforms=windows .
+        
+        Write-Host "Checking Windows directory..."
+        if (Test-Path "windows") {
+          Write-Host "✅ Windows directory created"
+          Get-ChildItem windows -Name | Select-Object -First 5
+        } else {
+          Write-Host "❌ Windows directory not found"
+        }
+      shell: powershell
+    
+    - name: Get Dependencies
+      run: |
+        Write-Host "Getting Flutter dependencies..."
+        flutter pub get
+      shell: powershell
+    
+    - name: Test Build
+      run: |
+        Write-Host "Testing Windows build..."
+        flutter clean
+        flutter build windows --release
+        
+        Write-Host "Checking build output..."
+        if (Test-Path "build\windows\runner\Release\elasticsearch_query_helper.exe") {
+          Write-Host "✅ Build successful!"
+          $exe = Get-Item "build\windows\runner\Release\elasticsearch_query_helper.exe"
+          Write-Host "Executable size: $([math]::Round($exe.Length / 1MB, 2)) MB"
+        } else {
+          Write-Host "❌ Build failed!"
+          Write-Host "Checking build directory..."
+          if (Test-Path "build\windows") {
+            Get-ChildItem "build\windows" -Recurse -Name | Select-Object -First 10
+          }
+        }
+      shell: powershell
+    
+    - name: Create Simple Package
+      if: success()
+      run: |
+        Write-Host "Creating simple package..."
+        
+        # Create package directory
+        $packageDir = "elasticsearch-query-helper-windows-simple"
+        New-Item -ItemType Directory -Force -Path $packageDir
+        
+        # Copy files
+        Copy-Item "build\windows\runner\Release\*" $packageDir -Recurse -Force
+        
+        # Create simple README
+        @"
+Elasticsearch Query Helper - Windows Version
+
+To run: Double-click elasticsearch_query_helper.exe
+
+Build date: $(Get-Date)
+"@ | Out-File "$packageDir\README.txt" -Encoding UTF8
+        
+        Write-Host "✅ Package created"
+        Get-ChildItem $packageDir -Name
+      shell: powershell
+    
+    - name: Upload Simple Package
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: elasticsearch-query-helper-windows-simple
+        path: elasticsearch-query-helper-windows-simple/
+        retention-days: 7

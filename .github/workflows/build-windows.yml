@@ -12,75 +12,197 @@ jobs:
     runs-on: windows-latest
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
     
-    - uses: subosito/flutter-action@v2
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
       with:
         flutter-version: '3.13.0'
         channel: 'stable'
+    
+    - name: Verify Flutter installation
+      run: |
+        flutter --version
+        flutter doctor -v
     
     - name: Enable Windows Desktop
       run: flutter config --enable-windows-desktop
     
     - name: Create Windows Platform
       run: flutter create --platforms=windows .
+      
+    - name: Verify Windows platform creation
+      run: |
+        if (Test-Path "windows") {
+          Write-Host "✅ Windows platform created successfully"
+          Get-ChildItem windows -Recurse -Name | Select-Object -First 10
+        } else {
+          Write-Host "❌ Windows platform creation failed"
+          exit 1
+        }
+      shell: powershell
     
     - name: Get dependencies
       run: flutter pub get
     
+    - name: Clean build
+      run: flutter clean
+    
     - name: Build Windows Release
-      run: flutter build windows --release
+      run: flutter build windows --release --verbose
+    
+    - name: Verify build output
+      run: |
+        if (Test-Path "build\windows\runner\Release\elasticsearch_query_helper.exe") {
+          Write-Host "✅ Build successful"
+          Get-ChildItem "build\windows\runner\Release" -Name
+        } else {
+          Write-Host "❌ Build failed - executable not found"
+          Get-ChildItem "build\windows\runner" -Recurse -Name | Select-Object -First 20
+          exit 1
+        }
+      shell: powershell
     
     - name: Create Release Package
-      shell: cmd
       run: |
-        mkdir dist
-        xcopy build\windows\runner\Release\* dist\elasticsearch-query-helper-windows\ /E /I /Y
-        echo Elasticsearch Query Helper - Windows Version > dist\elasticsearch-query-helper-windows\README.txt
-        echo. >> dist\elasticsearch-query-helper-windows\README.txt
-        echo Double-click elasticsearch_query_helper.exe to run the application >> dist\elasticsearch-query-helper-windows\README.txt
-        echo. >> dist\elasticsearch-query-helper-windows\README.txt
-        echo System Requirements: Windows 10 or later >> dist\elasticsearch-query-helper-windows\README.txt
+        # Create distribution directory
+        New-Item -ItemType Directory -Force -Path "dist"
+        New-Item -ItemType Directory -Force -Path "dist\elasticsearch-query-helper-windows"
+        
+        # Copy build files
+        Copy-Item -Path "build\windows\runner\Release\*" -Destination "dist\elasticsearch-query-helper-windows\" -Recurse -Force
+        
+        # Create README file
+        $readme = @"
+Elasticsearch Query Helper - Windows Version
+
+📦 Installation:
+1. Extract all files to a folder
+2. Double-click elasticsearch_query_helper.exe to run
+
+🔧 System Requirements:
+- Windows 10 or later
+- No additional dependencies required
+
+✨ Features:
+- Dark theme interface
+- Support for Elasticsearch v6, v7, v8
+- Connection management
+- Quick search functionality
+- Index browsing
+
+🆔 Version: 1.0.0
+📅 Build Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+"@
+        
+        $readme | Out-File -FilePath "dist\elasticsearch-query-helper-windows\README.txt" -Encoding UTF8
+        
+        # Create start script
+        $startScript = @"
+@echo off
+echo Starting Elasticsearch Query Helper...
+elasticsearch_query_helper.exe
+if %errorlevel% neq 0 (
+    echo.
+    echo Application exited with error code %errorlevel%
+    pause
+)
+"@
+        
+        $startScript | Out-File -FilePath "dist\elasticsearch-query-helper-windows\start.bat" -Encoding ASCII
+        
+        Write-Host "✅ Release package created"
+        Get-ChildItem "dist\elasticsearch-query-helper-windows" -Name
+      shell: powershell
         
     - name: Upload Windows Executable
       uses: actions/upload-artifact@v4
       with:
         name: elasticsearch-query-helper-windows
         path: dist/elasticsearch-query-helper-windows/
+        retention-days: 30
         
     - name: Create ZIP Package
-      shell: powershell
       run: |
-        Compress-Archive -Path dist\elasticsearch-query-helper-windows\* -DestinationPath elasticsearch-query-helper-windows-v1.0.0.zip
+        $version = "1.0.0"
+        $zipName = "elasticsearch-query-helper-windows-v$version.zip"
+        Compress-Archive -Path "dist\elasticsearch-query-helper-windows\*" -DestinationPath $zipName -Force
+        
+        Write-Host "✅ ZIP package created: $zipName"
+        $zipInfo = Get-Item $zipName
+        Write-Host "📦 Size: $([math]::Round($zipInfo.Length / 1MB, 2)) MB"
+      shell: powershell
         
     - name: Upload ZIP Package
       uses: actions/upload-artifact@v4
       with:
         name: elasticsearch-query-helper-windows-zip
-        path: elasticsearch-query-helper-windows-v1.0.0.zip
+        path: elasticsearch-query-helper-windows-v*.zip
+        retention-days: 30
 
     - name: Create Release (on tag)
       if: startsWith(github.ref, 'refs/tags/')
       uses: softprops/action-gh-release@v1
       with:
-        files: elasticsearch-query-helper-windows-v1.0.0.zip
+        files: elasticsearch-query-helper-windows-v*.zip
         body: |
-          ## Elasticsearch Query Helper - Windows Release
+          ## 🚀 Elasticsearch Query Helper - Windows Release
           
           ### 📦 Installation
-          1. Download the ZIP file
-          2. Extract to any folder
-          3. Double-click `elasticsearch_query_helper.exe`
+          1. Download the ZIP file below
+          2. Extract to any folder on your computer
+          3. Double-click `elasticsearch_query_helper.exe` or `start.bat`
           
           ### 🔧 System Requirements
-          - Windows 10 or later
+          - Windows 10 or later (64-bit)
           - No additional dependencies required
+          - Approximately 100MB disk space
           
           ### ✨ Features
-          - Dark theme interface
-          - Support for Elasticsearch v6, v7, v8
-          - Connection management
-          - Quick search functionality
-          - Index browsing
+          - 🎨 Dark theme interface
+          - 🔌 Support for Elasticsearch v6, v7, v8
+          - 💾 Connection management with saved configurations
+          - 🔍 Quick search functionality
+          - 📋 Index browsing and management
+          - 🛠️ Advanced query building tools
+          
+          ### 🐛 Troubleshooting
+          - If the app doesn't start, try running as administrator
+          - For connection issues, check your Elasticsearch server settings
+          - Windows Defender may flag the app initially - this is normal for unsigned executables
+          
+          ### 📝 Release Notes
+          - Initial Windows release
+          - Full feature parity with other platforms
+          - Optimized for Windows 10/11
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Build Summary
+      if: always()
+      run: |
+        Write-Host "🎯 Build Summary"
+        Write-Host "==============="
+        
+        if (Test-Path "dist\elasticsearch-query-helper-windows\elasticsearch_query_helper.exe") {
+          Write-Host "✅ Windows executable: Created successfully"
+          $exeInfo = Get-Item "dist\elasticsearch-query-helper-windows\elasticsearch_query_helper.exe"
+          Write-Host "📦 Executable size: $([math]::Round($exeInfo.Length / 1MB, 2)) MB"
+        } else {
+          Write-Host "❌ Windows executable: Failed to create"
+        }
+        
+        if (Test-Path "elasticsearch-query-helper-windows-v*.zip") {
+          Write-Host "✅ ZIP package: Created successfully"
+          $zipFiles = Get-Item "elasticsearch-query-helper-windows-v*.zip"
+          foreach ($zip in $zipFiles) {
+            Write-Host "📦 ZIP size: $([math]::Round($zip.Length / 1MB, 2)) MB"
+          }
+        } else {
+          Write-Host "❌ ZIP package: Failed to create"
+        }
+        
+        Write-Host ""
+        Write-Host "🎉 Build completed!"
+      shell: powershell
