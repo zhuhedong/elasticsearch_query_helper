@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Elasticsearch Query Helper
+Comment=A powerful tool for managing Elasticsearch queries with multi-version support
+Exec=/home/code/devel/development/code/flutter/elasticsearch_query_helper/run.sh
+Icon=/home/code/devel/development/code/flutter/elasticsearch_query_helper/assets/icon.png
+Terminal=false
+Categories=Development;Database;Utility;
+Keywords=elasticsearch;search;database;query;json;
+StartupNotify=true
+StartupWMClass=elasticsearch_query_helper

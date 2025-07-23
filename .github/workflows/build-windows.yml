@@ -1,0 +1,86 @@
+name: Build Windows Release
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.13.0'
+        channel: 'stable'
+    
+    - name: Enable Windows Desktop
+      run: flutter config --enable-windows-desktop
+    
+    - name: Create Windows Platform
+      run: flutter create --platforms=windows .
+    
+    - name: Get dependencies
+      run: flutter pub get
+    
+    - name: Build Windows Release
+      run: flutter build windows --release
+    
+    - name: Create Release Package
+      shell: cmd
+      run: |
+        mkdir dist
+        xcopy build\windows\runner\Release\* dist\elasticsearch-query-helper-windows\ /E /I /Y
+        echo Elasticsearch Query Helper - Windows Version > dist\elasticsearch-query-helper-windows\README.txt
+        echo. >> dist\elasticsearch-query-helper-windows\README.txt
+        echo Double-click elasticsearch_query_helper.exe to run the application >> dist\elasticsearch-query-helper-windows\README.txt
+        echo. >> dist\elasticsearch-query-helper-windows\README.txt
+        echo System Requirements: Windows 10 or later >> dist\elasticsearch-query-helper-windows\README.txt
+        
+    - name: Upload Windows Executable
+      uses: actions/upload-artifact@v4
+      with:
+        name: elasticsearch-query-helper-windows
+        path: dist/elasticsearch-query-helper-windows/
+        
+    - name: Create ZIP Package
+      shell: powershell
+      run: |
+        Compress-Archive -Path dist\elasticsearch-query-helper-windows\* -DestinationPath elasticsearch-query-helper-windows-v1.0.0.zip
+        
+    - name: Upload ZIP Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: elasticsearch-query-helper-windows-zip
+        path: elasticsearch-query-helper-windows-v1.0.0.zip
+
+    - name: Create Release (on tag)
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: elasticsearch-query-helper-windows-v1.0.0.zip
+        body: |
+          ## Elasticsearch Query Helper - Windows Release
+          
+          ### 📦 Installation
+          1. Download the ZIP file
+          2. Extract to any folder
+          3. Double-click `elasticsearch_query_helper.exe`
+          
+          ### 🔧 System Requirements
+          - Windows 10 or later
+          - No additional dependencies required
+          
+          ### ✨ Features
+          - Dark theme interface
+          - Support for Elasticsearch v6, v7, v8
+          - Connection management
+          - Quick search functionality
+          - Index browsing
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
