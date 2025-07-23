@@ -1,4 +1,4 @@
-name: Windows Build (No Git)
+name: Windows Build (Fixed)
 
 on:
   workflow_dispatch:
@@ -78,45 +78,49 @@ jobs:
         Write-Host "Copying release files..."
         Copy-Item "$releaseDir\*" $packageDir -Recurse -Force
         
-        $readmeContent = @"
-Elasticsearch Query Helper - Windows版本
-
-安装说明:
-1. 解压所有文件到一个文件夹
-2. 双击 elasticsearch_query_helper.exe 启动程序
-
-系统要求:
-- Windows 10 或更高版本
-- 无需额外依赖
-
-版本信息:
-- 版本: 1.0.0
-- 构建时间: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
-- 平台: Windows x64
-
-使用说明:
-1. 启动程序后，首先配置Elasticsearch连接
-2. 输入服务器地址、端口、用户名和密码
-3. 测试连接成功后即可开始查询
-
-故障排除:
-- 如果程序无法启动，请确保Windows版本兼容
-- 如果连接失败，请检查网络和Elasticsearch服务状态
-- 如有问题，请检查防火墙设置
-"@
+        # Create README content using array join
+        $readmeLines = @(
+          "Elasticsearch Query Helper - Windows版本",
+          "",
+          "安装说明:",
+          "1. 解压所有文件到一个文件夹",
+          "2. 双击 elasticsearch_query_helper.exe 启动程序",
+          "",
+          "系统要求:",
+          "- Windows 10 或更高版本",
+          "- 无需额外依赖",
+          "",
+          "版本信息:",
+          "- 版本: 1.0.0",
+          "- 构建时间: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
+          "- 平台: Windows x64",
+          "",
+          "使用说明:",
+          "1. 启动程序后，首先配置Elasticsearch连接",
+          "2. 输入服务器地址、端口、用户名和密码", 
+          "3. 测试连接成功后即可开始查询",
+          "",
+          "故障排除:",
+          "- 如果程序无法启动，请确保Windows版本兼容",
+          "- 如果连接失败，请检查网络和Elasticsearch服务状态",
+          "- 如有问题，请检查防火墙设置"
+        )
         
+        $readmeContent = $readmeLines -join "`n"
         $readmeContent | Out-File "$packageDir\README.txt" -Encoding UTF8
         
-        $startBatContent = @"
-@echo off
-echo 正在启动 Elasticsearch Query Helper...
-echo.
-elasticsearch_query_helper.exe
-echo.
-echo 程序已退出，按任意键关闭此窗口...
-pause >nul
-"@
+        # Create batch file content using array join
+        $batLines = @(
+          "@echo off",
+          "echo 正在启动 Elasticsearch Query Helper...",
+          "echo.",
+          "elasticsearch_query_helper.exe",
+          "echo.",
+          "echo 程序已退出，按任意键关闭此窗口...",
+          "pause >nul"
+        )
         
+        $startBatContent = $batLines -join "`n"
         $startBatContent | Out-File "$packageDir\启动程序.bat" -Encoding Default
         
         Write-Host "Package created successfully"
