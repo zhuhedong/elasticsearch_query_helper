@@ -73,44 +73,36 @@ jobs:
         # Copy build files
         Copy-Item -Path "build\windows\runner\Release\*" -Destination "dist\elasticsearch-query-helper-windows\" -Recurse -Force
         
-        # Create README file
-        $readme = @"
-Elasticsearch Query Helper - Windows Version
-
-📦 Installation:
-1. Extract all files to a folder
-2. Double-click elasticsearch_query_helper.exe to run
-
-🔧 System Requirements:
-- Windows 10 or later
-- No additional dependencies required
-
-✨ Features:
-- Dark theme interface
-- Support for Elasticsearch v6, v7, v8
-- Connection management
-- Quick search functionality
-- Index browsing
-
-🆔 Version: 1.0.0
-📅 Build Date: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-"@
+        # Create README file content
+        $readmeContent = "Elasticsearch Query Helper - Windows Version`n`n"
+        $readmeContent += "Installation:`n"
+        $readmeContent += "1. Extract all files to a folder`n"
+        $readmeContent += "2. Double-click elasticsearch_query_helper.exe to run`n`n"
+        $readmeContent += "System Requirements:`n"
+        $readmeContent += "- Windows 10 or later`n"
+        $readmeContent += "- No additional dependencies required`n`n"
+        $readmeContent += "Features:`n"
+        $readmeContent += "- Dark theme interface`n"
+        $readmeContent += "- Support for Elasticsearch v6, v7, v8`n"
+        $readmeContent += "- Connection management`n"
+        $readmeContent += "- Quick search functionality`n"
+        $readmeContent += "- Index browsing`n`n"
+        $readmeContent += "Version: 1.0.0`n"
+        $readmeContent += "Build Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`n"
         
-        $readme | Out-File -FilePath "dist\elasticsearch-query-helper-windows\README.txt" -Encoding UTF8
+        $readmeContent | Out-File -FilePath "dist\elasticsearch-query-helper-windows\README.txt" -Encoding UTF8
         
-        # Create start script
-        $startScript = @"
-@echo off
-echo Starting Elasticsearch Query Helper...
-elasticsearch_query_helper.exe
-if %errorlevel% neq 0 (
-    echo.
-    echo Application exited with error code %errorlevel%
-    pause
-)
-"@
+        # Create start script content
+        $startContent = "@echo off`n"
+        $startContent += "echo Starting Elasticsearch Query Helper...`n"
+        $startContent += "elasticsearch_query_helper.exe`n"
+        $startContent += "if %errorlevel% neq 0 (`n"
+        $startContent += "    echo.`n"
+        $startContent += "    echo Application exited with error code %errorlevel%`n"
+        $startContent += "    pause`n"
+        $startContent += ")`n"
         
-        $startScript | Out-File -FilePath "dist\elasticsearch-query-helper-windows\start.bat" -Encoding ASCII
+        $startContent | Out-File -FilePath "dist\elasticsearch-query-helper-windows\start.bat" -Encoding ASCII
         
         Write-Host "✅ Release package created"
         Get-ChildItem "dist\elasticsearch-query-helper-windows" -Name
