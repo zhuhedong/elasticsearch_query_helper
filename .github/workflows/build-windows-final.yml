@@ -1,0 +1,184 @@
+name: Windows Build (No Git)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.13.0'
+        channel: 'stable'
+    
+    - name: Enable Windows Desktop
+      run: |
+        Write-Host "Enabling Windows desktop support..."
+        flutter config --enable-windows-desktop
+        Write-Host "Windows desktop support enabled"
+      shell: powershell
+    
+    - name: Get dependencies
+      run: |
+        Write-Host "Getting Flutter dependencies..."
+        flutter pub get
+        Write-Host "Dependencies installed successfully"
+      shell: powershell
+    
+    - name: Clean build
+      run: |
+        Write-Host "Cleaning previous build..."
+        flutter clean
+        Write-Host "Clean completed"
+      shell: powershell
+    
+    - name: Build Windows Release
+      run: |
+        Write-Host "Starting Windows build..."
+        flutter build windows --release --verbose
+        
+        $exePath = "build\windows\runner\Release\elasticsearch_query_helper.exe"
+        if (Test-Path $exePath) {
+          Write-Host "Build successful!"
+          $exe = Get-Item $exePath
+          Write-Host "Executable size: $([math]::Round($exe.Length / 1MB, 2)) MB"
+          Write-Host "Executable path: $exePath"
+        } else {
+          Write-Host "Build failed - executable not found at: $exePath"
+          Write-Host "Checking build directory structure..."
+          if (Test-Path "build") {
+            Get-ChildItem "build" -Recurse | Where-Object { $_.Name -like "*.exe" } | ForEach-Object {
+              Write-Host "Found exe: $($_.FullName)"
+            }
+          }
+          throw "Build failed - executable not generated"
+        }
+      shell: powershell
+    
+    - name: Create Release Package
+      run: |
+        Write-Host "Creating release package..."
+        
+        $packageDir = "elasticsearch-query-helper-windows"
+        $releaseDir = "build\windows\runner\Release"
+        
+        if (Test-Path $packageDir) {
+          Remove-Item $packageDir -Recurse -Force
+        }
+        New-Item -ItemType Directory -Force -Path $packageDir
+        
+        Write-Host "Copying release files..."
+        Copy-Item "$releaseDir\*" $packageDir -Recurse -Force
+        
+        $readmeContent = @"
+Elasticsearch Query Helper - Windows版本
+
+安装说明:
+1. 解压所有文件到一个文件夹
+2. 双击 elasticsearch_query_helper.exe 启动程序
+
+系统要求:
+- Windows 10 或更高版本
+- 无需额外依赖
+
+版本信息:
+- 版本: 1.0.0
+- 构建时间: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+- 平台: Windows x64
+
+使用说明:
+1. 启动程序后，首先配置Elasticsearch连接
+2. 输入服务器地址、端口、用户名和密码
+3. 测试连接成功后即可开始查询
+
+故障排除:
+- 如果程序无法启动，请确保Windows版本兼容
+- 如果连接失败，请检查网络和Elasticsearch服务状态
+- 如有问题，请检查防火墙设置
+"@
+        
+        $readmeContent | Out-File "$packageDir\README.txt" -Encoding UTF8
+        
+        $startBatContent = @"
+@echo off
+echo 正在启动 Elasticsearch Query Helper...
+echo.
+elasticsearch_query_helper.exe
+echo.
+echo 程序已退出，按任意键关闭此窗口...
+pause >nul
+"@
+        
+        $startBatContent | Out-File "$packageDir\启动程序.bat" -Encoding Default
+        
+        Write-Host "Package created successfully"
+        Write-Host "Package contents:"
+        Get-ChildItem $packageDir | ForEach-Object {
+          if ($_.PSIsContainer) {
+            Write-Host "  📁 $($_.Name)/"
+          } else {
+            $size = [math]::Round($_.Length / 1KB, 1)
+            Write-Host "  📄 $($_.Name) ($size KB)"
+          }
+        }
+      shell: powershell
+    
+    - name: Create ZIP Archive
+      run: |
+        $zipName = "elasticsearch-query-helper-windows-v1.0.0.zip"
+        
+        Write-Host "Creating ZIP archive: $zipName"
+        Compress-Archive -Path "elasticsearch-query-helper-windows\*" -DestinationPath $zipName -Force
+        
+        if (Test-Path $zipName) {
+          $zipInfo = Get-Item $zipName
+          Write-Host "ZIP created successfully"
+          Write-Host "ZIP size: $([math]::Round($zipInfo.Length / 1MB, 2)) MB"
+          Write-Host "ZIP path: $($zipInfo.FullName)"
+        } else {
+          throw "Failed to create ZIP archive"
+        }
+      shell: powershell
+    
+    - name: Upload Release Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: elasticsearch-query-helper-windows
+        path: elasticsearch-query-helper-windows/
+        retention-days: 30
+    
+    - name: Upload ZIP Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: elasticsearch-query-helper-windows-zip
+        path: elasticsearch-query-helper-windows-v*.zip
+        retention-days: 30
+    
+    - name: Build Summary
+      run: |
+        Write-Host "=== 构建完成总结 ==="
+        Write-Host "✅ Flutter应用构建成功"
+        Write-Host "✅ Windows可执行文件生成"
+        Write-Host "✅ 发布包创建完成"
+        Write-Host "✅ ZIP压缩包生成"
+        Write-Host ""
+        Write-Host "下载说明:"
+        Write-Host "1. 进入GitHub Actions页面"
+        Write-Host "2. 选择本次构建"
+        Write-Host "3. 在Artifacts部分下载ZIP文件"
+        Write-Host "4. 解压后运行 elasticsearch_query_helper.exe"
+        Write-Host ""
+        Write-Host "包含文件:"
+        Write-Host "- elasticsearch_query_helper.exe (主程序)"
+        Write-Host "- README.txt (说明文档)"
+        Write-Host "- 启动程序.bat (便捷启动)"
+        Write-Host "- 其他运行时文件"
+      shell: powershell
