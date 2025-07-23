@@ -26,14 +26,56 @@ jobs:
     - name: Create Flutter Project
       run: |
         Write-Host "Creating Flutter project structure..."
+        Write-Host "Initial directory: $(Get-Location)"
+        
+        # Create the project
         flutter create --platforms=windows elasticsearch_query_helper
+        
+        # Verify project was created
+        if (Test-Path "elasticsearch_query_helper") {
+          Write-Host "Project directory created successfully"
+          Write-Host "Project contents:"
+          Get-ChildItem "elasticsearch_query_helper" | ForEach-Object { Write-Host "  $($_.Name)" }
+        } else {
+          throw "Failed to create Flutter project"
+        }
+        
+        # Change to project directory
         Set-Location elasticsearch_query_helper
-        Write-Host "Project created successfully, current directory: $(Get-Location)"
+        Write-Host "Changed to project directory: $(Get-Location)"
+        
+        # Verify we're in the right place
+        if (Test-Path "pubspec.yaml") {
+          Write-Host "Found pubspec.yaml - we're in the correct Flutter project directory"
+        } else {
+          Write-Host "Warning: pubspec.yaml not found, may not be in correct directory"
+          Write-Host "Current directory contents:"
+          Get-ChildItem | ForEach-Object { Write-Host "  $($_.Name)" }
+        }
       shell: powershell
     
     - name: Setup Project Files
       run: |
         Write-Host "Setting up project files..."
+        
+        # Verify current directory
+        Write-Host "Current directory: $(Get-Location)"
+        Write-Host "Directory contents:"
+        Get-ChildItem | ForEach-Object { Write-Host "  $($_.Name)" }
+        
+        # Check if lib directory exists
+        if (Test-Path "lib") {
+          Write-Host "lib directory exists"
+        } else {
+          Write-Host "lib directory not found, creating it..."
+          New-Item -ItemType Directory -Force -Path "lib"
+        }
+        
+        # Verify lib directory
+        Write-Host "lib directory contents:"
+        if (Test-Path "lib") {
+          Get-ChildItem "lib" | ForEach-Object { Write-Host "  $($_.Name)" }
+        }
         
         # Create basic main.dart
         $mainDart = @(
@@ -90,7 +132,38 @@ jobs:
         )
         
         $mainContent = $mainDart -join "`n"
-        $mainContent | Out-File "lib\main.dart" -Encoding UTF8
+        
+        # Create the full path for main.dart
+        $mainDartPath = Join-Path (Get-Location) "lib\main.dart"
+        Write-Host "Writing main.dart to: $mainDartPath"
+        
+        # Ensure the lib directory exists before writing
+        $libDir = Join-Path (Get-Location) "lib"
+        if (-not (Test-Path $libDir)) {
+          New-Item -ItemType Directory -Force -Path $libDir
+          Write-Host "Created lib directory: $libDir"
+        }
+        
+        # Write the file
+        try {
+          $mainContent | Out-File $mainDartPath -Encoding UTF8
+          Write-Host "Successfully wrote main.dart"
+          
+          # Verify the file was created
+          if (Test-Path $mainDartPath) {
+            $fileSize = (Get-Item $mainDartPath).Length
+            Write-Host "main.dart created successfully, size: $fileSize bytes"
+          } else {
+            throw "main.dart was not created"
+          }
+        } catch {
+          Write-Host "Error writing main.dart: $($_.Exception.Message)"
+          Write-Host "Attempting alternative method..."
+          
+          # Alternative method using Set-Content
+          Set-Content -Path $mainDartPath -Value $mainContent -Encoding UTF8
+          Write-Host "Used Set-Content as fallback"
+        }
         
         Write-Host "Project files setup completed"
       shell: powershell
