@@ -1,0 +1,132 @@
+name: Windows Build (Safe)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.13.0'
+        channel: 'stable'
+    
+    - name: Configure Git
+      run: |
+        git config --global core.autocrlf false
+        git config --global core.filemode false
+        git config --global core.longpaths true
+        Write-Host "Git configuration updated"
+      shell: powershell
+    
+    - name: Enable Windows Desktop
+      run: |
+        flutter config --enable-windows-desktop
+        Write-Host "Windows desktop support enabled"
+      shell: powershell
+    
+    - name: Check Windows platform
+      run: |
+        if (Test-Path "windows") {
+          Write-Host "Windows platform exists"
+          Get-ChildItem windows -Name | Select-Object -First 5
+        } else {
+          Write-Host "Windows platform missing - will skip flutter create"
+        }
+      shell: powershell
+    
+    - name: Get dependencies
+      run: |
+        Write-Host "Getting Flutter dependencies..."
+        flutter pub get
+      shell: powershell
+    
+    - name: Clean build
+      run: |
+        Write-Host "Cleaning previous build..."
+        flutter clean
+      shell: powershell
+    
+    - name: Build Windows Release
+      run: |
+        Write-Host "Starting Windows build..."
+        flutter build windows --release
+        
+        if (Test-Path "build\windows\runner\Release\elasticsearch_query_helper.exe") {
+          Write-Host "Build successful!"
+          $exe = Get-Item "build\windows\runner\Release\elasticsearch_query_helper.exe"
+          Write-Host "Executable size: $([math]::Round($exe.Length / 1MB, 2)) MB"
+        } else {
+          Write-Host "Build failed - executable not found"
+          if (Test-Path "build") {
+            Write-Host "Build directory contents:"
+            Get-ChildItem "build" -Recurse -Name | Select-Object -First 10
+          }
+          throw "Build failed"
+        }
+      shell: powershell
+    
+    - name: Create Package
+      run: |
+        Write-Host "Creating release package..."
+        
+        $packageDir = "elasticsearch-query-helper-windows"
+        New-Item -ItemType Directory -Force -Path $packageDir
+        
+        Copy-Item "build\windows\runner\Release\*" $packageDir -Recurse -Force
+        
+        $readme = "Elasticsearch Query Helper - Windows Version`n`n"
+        $readme += "Installation:`n"
+        $readme += "1. Extract all files to a folder`n"
+        $readme += "2. Double-click elasticsearch_query_helper.exe`n`n"
+        $readme += "System Requirements:`n"
+        $readme += "- Windows 10 or later`n"
+        $readme += "- No additional dependencies required`n`n"
+        $readme += "Version: 1.0.0`n"
+        $readme += "Build Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`n"
+        
+        $readme | Out-File "$packageDir\README.txt" -Encoding UTF8
+        
+        $startScript = "@echo off`n"
+        $startScript += "echo Starting Elasticsearch Query Helper...`n"
+        $startScript += "elasticsearch_query_helper.exe`n"
+        $startScript += "pause`n"
+        
+        $startScript | Out-File "$packageDir\start.bat" -Encoding ASCII
+        
+        Write-Host "Package created successfully"
+        Write-Host "Package contents:"
+        Get-ChildItem $packageDir -Name
+      shell: powershell
+    
+    - name: Upload Package
+      uses: actions/upload-artifact@v4
+      with:
+        name: elasticsearch-query-helper-windows
+        path: elasticsearch-query-helper-windows/
+        retention-days: 30
+    
+    - name: Create ZIP
+      run: |
+        $zipName = "elasticsearch-query-helper-windows-v1.0.0.zip"
+        Compress-Archive -Path "elasticsearch-query-helper-windows\*" -DestinationPath $zipName -Force
+        
+        Write-Host "ZIP created: $zipName"
+        $zipInfo = Get-Item $zipName
+        Write-Host "ZIP size: $([math]::Round($zipInfo.Length / 1MB, 2)) MB"
+      shell: powershell
+    
+    - name: Upload ZIP
+      uses: actions/upload-artifact@v4
+      with:
+        name: elasticsearch-query-helper-windows-zip
+        path: elasticsearch-query-helper-windows-v*.zip
+        retention-days: 30
