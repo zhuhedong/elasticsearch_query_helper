@@ -171,6 +171,26 @@ jobs:
     - name: Enable Windows Desktop
       run: |
         Write-Host "Enabling Windows desktop support..."
+        
+        # Ensure we're in the project directory
+        if (Test-Path "elasticsearch_query_helper") {
+          Set-Location elasticsearch_query_helper
+          Write-Host "Changed to project directory: $(Get-Location)"
+        } else {
+          Write-Host "Error: elasticsearch_query_helper directory not found"
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Available directories:"
+          Get-ChildItem -Directory | ForEach-Object { Write-Host "  $($_.Name)" }
+          throw "Project directory not found"
+        }
+        
+        # Verify we're in a Flutter project
+        if (Test-Path "pubspec.yaml") {
+          Write-Host "Confirmed: We're in a Flutter project directory"
+        } else {
+          throw "pubspec.yaml not found - not in Flutter project root"
+        }
+        
         flutter config --enable-windows-desktop
         Write-Host "Windows desktop support enabled"
       shell: powershell
@@ -178,6 +198,26 @@ jobs:
     - name: Get Dependencies
       run: |
         Write-Host "Getting Flutter dependencies..."
+        
+        # Ensure we're in the project directory
+        if (Test-Path "elasticsearch_query_helper") {
+          Set-Location elasticsearch_query_helper
+          Write-Host "Changed to project directory: $(Get-Location)"
+        } else {
+          Write-Host "Error: elasticsearch_query_helper directory not found"
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Available directories:"
+          Get-ChildItem -Directory | ForEach-Object { Write-Host "  $($_.Name)" }
+          throw "Project directory not found"
+        }
+        
+        # Verify we're in a Flutter project
+        if (Test-Path "pubspec.yaml") {
+          Write-Host "Confirmed: We're in a Flutter project directory"
+        } else {
+          throw "pubspec.yaml not found - not in Flutter project root"
+        }
+        
         flutter pub get
         Write-Host "Dependencies installed successfully"
       shell: powershell
@@ -185,6 +225,26 @@ jobs:
     - name: Clean Build
       run: |
         Write-Host "Cleaning build cache..."
+        
+        # Ensure we're in the project directory
+        if (Test-Path "elasticsearch_query_helper") {
+          Set-Location elasticsearch_query_helper
+          Write-Host "Changed to project directory: $(Get-Location)"
+        } else {
+          Write-Host "Error: elasticsearch_query_helper directory not found"
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Available directories:"
+          Get-ChildItem -Directory | ForEach-Object { Write-Host "  $($_.Name)" }
+          throw "Project directory not found"
+        }
+        
+        # Verify we're in a Flutter project
+        if (Test-Path "pubspec.yaml") {
+          Write-Host "Confirmed: We're in a Flutter project directory"
+        } else {
+          throw "pubspec.yaml not found - not in Flutter project root"
+        }
+        
         flutter clean
         Write-Host "Clean completed"
       shell: powershell
@@ -192,6 +252,26 @@ jobs:
     - name: Build Windows Release
       run: |
         Write-Host "Starting Windows build..."
+        
+        # Ensure we're in the project directory
+        if (Test-Path "elasticsearch_query_helper") {
+          Set-Location elasticsearch_query_helper
+          Write-Host "Changed to project directory: $(Get-Location)"
+        } else {
+          Write-Host "Error: elasticsearch_query_helper directory not found"
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Available directories:"
+          Get-ChildItem -Directory | ForEach-Object { Write-Host "  $($_.Name)" }
+          throw "Project directory not found"
+        }
+        
+        # Verify we're in a Flutter project
+        if (Test-Path "pubspec.yaml") {
+          Write-Host "Confirmed: We're in a Flutter project directory"
+        } else {
+          throw "pubspec.yaml not found - not in Flutter project root"
+        }
+        
         flutter build windows --release --verbose
         
         $exePath = "build\windows\runner\Release\elasticsearch_query_helper.exe"
@@ -215,6 +295,25 @@ jobs:
     - name: Create Release Package
       run: |
         Write-Host "Creating release package..."
+        
+        # Ensure we're in the project directory first
+        if (Test-Path "elasticsearch_query_helper") {
+          Set-Location elasticsearch_query_helper
+          Write-Host "Changed to project directory: $(Get-Location)"
+        } else {
+          Write-Host "Error: elasticsearch_query_helper directory not found"
+          Write-Host "Current directory: $(Get-Location)"
+          Write-Host "Available directories:"
+          Get-ChildItem -Directory | ForEach-Object { Write-Host "  $($_.Name)" }
+          throw "Project directory not found"
+        }
+        
+        # Verify build was successful
+        if (Test-Path "build\windows\runner\Release\elasticsearch_query_helper.exe") {
+          Write-Host "Confirmed: Build executable exists"
+        } else {
+          throw "Build executable not found - cannot create release package"
+        }
         
         $packageDir = "elasticsearch-query-helper-windows"
         $releaseDir = "build\windows\runner\Release"
@@ -290,10 +389,27 @@ jobs:
     
     - name: Create ZIP Archive
       run: |
+        # Ensure we're in the project directory
+        if (Test-Path "elasticsearch_query_helper") {
+          Set-Location elasticsearch_query_helper
+          Write-Host "Changed to project directory for ZIP creation: $(Get-Location)"
+        } else {
+          Write-Host "Error: elasticsearch_query_helper directory not found"
+          Write-Host "Current directory: $(Get-Location)"
+          throw "Project directory not found"
+        }
+        
         $zipName = "elasticsearch-query-helper-windows-demo-v1.0.0.zip"
         
         Write-Host "Creating ZIP archive: $zipName"
-        Compress-Archive -Path "elasticsearch-query-helper-windows\*" -DestinationPath $zipName -Force
+        
+        # Verify package directory exists
+        if (Test-Path "elasticsearch-query-helper-windows") {
+          Write-Host "Package directory found, creating ZIP..."
+          Compress-Archive -Path "elasticsearch-query-helper-windows\*" -DestinationPath $zipName -Force
+        } else {
+          throw "Package directory not found - cannot create ZIP"
+        }
         
         if (Test-Path $zipName) {
           $zipInfo = Get-Item $zipName
@@ -309,14 +425,14 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: elasticsearch-query-helper-windows-demo
-        path: elasticsearch-query-helper-windows/
+        path: elasticsearch_query_helper/elasticsearch-query-helper-windows/
         retention-days: 30
     
     - name: Upload ZIP Package
       uses: actions/upload-artifact@v4
       with:
         name: elasticsearch-query-helper-windows-demo-zip
-        path: elasticsearch-query-helper-windows-demo-v*.zip
+        path: elasticsearch_query_helper/elasticsearch-query-helper-windows-demo-v*.zip
         retention-days: 30
     
     - name: Build Summary
