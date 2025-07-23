@@ -1,4 +1,4 @@
-name: Windows Build (Pure)
+name: Windows Build (English)
 
 on:
   workflow_dispatch:
@@ -10,11 +10,11 @@ jobs:
     runs-on: windows-latest
     
     steps:
-    - name: Download Source Code
+    - name: Prepare Build Environment
       run: |
-        Write-Host "准备构建环境..."
-        Write-Host "工作目录: $(Get-Location)"
-        Write-Host "可用磁盘空间: $((Get-WmiObject -Class Win32_LogicalDisk -Filter "DeviceID='C:'").FreeSpace / 1GB) GB"
+        Write-Host "Preparing build environment..."
+        Write-Host "Working directory: $(Get-Location)"
+        Write-Host "Available disk space: $((Get-WmiObject -Class Win32_LogicalDisk -Filter "DeviceID='C:'").FreeSpace / 1GB) GB"
       shell: powershell
     
     - name: Setup Flutter
@@ -25,17 +25,17 @@ jobs:
     
     - name: Create Flutter Project
       run: |
-        Write-Host "创建Flutter项目结构..."
+        Write-Host "Creating Flutter project structure..."
         flutter create --platforms=windows elasticsearch_query_helper
         Set-Location elasticsearch_query_helper
-        Write-Host "项目创建完成，当前目录: $(Get-Location)"
+        Write-Host "Project created successfully, current directory: $(Get-Location)"
       shell: powershell
     
     - name: Setup Project Files
       run: |
-        Write-Host "设置项目文件..."
+        Write-Host "Setting up project files..."
         
-        # 创建基本的main.dart
+        # Create basic main.dart
         $mainDart = @(
           "import 'package:flutter/material.dart';",
           "",
@@ -71,15 +71,15 @@ jobs:
           "          mainAxisAlignment: MainAxisAlignment.center,",
           "          children: [",
           "            Text(",
-          "              'Elasticsearch查询助手',",
+          "              'Elasticsearch Query Helper',",
           "              style: TextStyle(fontSize: 24, color: Colors.white),",
           "            ),",
           "            SizedBox(height: 20),",
           "            ElevatedButton(",
           "              onPressed: () {",
-          "                // TODO: 实现连接功能",
+          "                // TODO: Implement connection functionality",
           "              },",
-          "              child: Text('连接Elasticsearch'),",
+          "              child: Text('Connect to Elasticsearch'),",
           "            ),",
           "          ],",
           "        ),",
@@ -92,56 +92,56 @@ jobs:
         $mainContent = $mainDart -join "`n"
         $mainContent | Out-File "lib\main.dart" -Encoding UTF8
         
-        Write-Host "项目文件设置完成"
+        Write-Host "Project files setup completed"
       shell: powershell
     
     - name: Enable Windows Desktop
       run: |
-        Write-Host "启用Windows桌面支持..."
+        Write-Host "Enabling Windows desktop support..."
         flutter config --enable-windows-desktop
-        Write-Host "Windows桌面支持已启用"
+        Write-Host "Windows desktop support enabled"
       shell: powershell
     
     - name: Get Dependencies
       run: |
-        Write-Host "获取Flutter依赖..."
+        Write-Host "Getting Flutter dependencies..."
         flutter pub get
-        Write-Host "依赖安装完成"
+        Write-Host "Dependencies installed successfully"
       shell: powershell
     
     - name: Clean Build
       run: |
-        Write-Host "清理构建缓存..."
+        Write-Host "Cleaning build cache..."
         flutter clean
-        Write-Host "清理完成"
+        Write-Host "Clean completed"
       shell: powershell
     
     - name: Build Windows Release
       run: |
-        Write-Host "开始构建Windows版本..."
+        Write-Host "Starting Windows build..."
         flutter build windows --release --verbose
         
         $exePath = "build\windows\runner\Release\elasticsearch_query_helper.exe"
         if (Test-Path $exePath) {
-          Write-Host "构建成功!"
+          Write-Host "Build successful!"
           $exe = Get-Item $exePath
-          Write-Host "可执行文件大小: $([math]::Round($exe.Length / 1MB, 2)) MB"
-          Write-Host "可执行文件路径: $exePath"
+          Write-Host "Executable size: $([math]::Round($exe.Length / 1MB, 2)) MB"
+          Write-Host "Executable path: $exePath"
         } else {
-          Write-Host "构建失败 - 可执行文件未生成: $exePath"
-          Write-Host "检查构建目录结构..."
+          Write-Host "Build failed - executable not found at: $exePath"
+          Write-Host "Checking build directory structure..."
           if (Test-Path "build") {
             Get-ChildItem "build" -Recurse | Where-Object { $_.Name -like "*.exe" } | ForEach-Object {
-              Write-Host "发现exe文件: $($_.FullName)"
+              Write-Host "Found exe file: $($_.FullName)"
             }
           }
-          throw "构建失败 - 可执行文件未生成"
+          throw "Build failed - executable not generated"
         }
       shell: powershell
     
     - name: Create Release Package
       run: |
-        Write-Host "创建发布包..."
+        Write-Host "Creating release package..."
         
         $packageDir = "elasticsearch-query-helper-windows"
         $releaseDir = "build\windows\runner\Release"
@@ -151,66 +151,66 @@ jobs:
         }
         New-Item -ItemType Directory -Force -Path $packageDir
         
-        Write-Host "复制发布文件..."
+        Write-Host "Copying release files..."
         Copy-Item "$releaseDir\*" $packageDir -Recurse -Force
         
-        # 创建README文件
+        # Create README file
         $readmeLines = @(
-          "Elasticsearch Query Helper - Windows版本",
+          "Elasticsearch Query Helper - Windows Version",
           "",
-          "这是一个简化的演示版本，包含基本的Flutter应用结构。",
+          "This is a demo version with basic Flutter application structure.",
           "",
-          "安装说明:",
-          "1. 解压所有文件到一个文件夹",
-          "2. 双击 elasticsearch_query_helper.exe 启动程序",
+          "Installation Instructions:",
+          "1. Extract all files to a folder",
+          "2. Double-click elasticsearch_query_helper.exe to start the program",
           "",
-          "系统要求:",
-          "- Windows 10 或更高版本",
-          "- 无需额外依赖",
+          "System Requirements:",
+          "- Windows 10 or later",
+          "- No additional dependencies required",
           "",
-          "版本信息:",
-          "- 版本: 1.0.0 (演示版)",
-          "- 构建时间: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
-          "- 平台: Windows x64",
+          "Version Information:",
+          "- Version: 1.0.0 (Demo)",
+          "- Build Time: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
+          "- Platform: Windows x64",
           "",
-          "注意:",
-          "这是通过GitHub Actions自动构建的演示版本。",
-          "如需完整功能，请使用包含完整源代码的版本。",
+          "Note:",
+          "This is a demo version built automatically via GitHub Actions.",
+          "For full functionality, please use the version with complete source code.",
           "",
-          "使用说明:",
-          "1. 启动程序后会看到基本界面",
-          "2. 这是一个演示应用，展示了Flutter Windows应用的基本结构",
+          "Usage Instructions:",
+          "1. After starting the program, you will see the basic interface",
+          "2. This is a demo application showing Flutter Windows app structure",
           "",
-          "故障排除:",
-          "- 如果程序无法启动，请确保Windows版本兼容",
-          "- 如有问题，请检查防火墙设置"
+          "Troubleshooting:",
+          "- If the program cannot start, ensure Windows version compatibility",
+          "- If you encounter issues, check firewall settings"
         )
         
         $readmeContent = $readmeLines -join "`n"
         $readmeContent | Out-File "$packageDir\README.txt" -Encoding UTF8
         
-        # 创建启动脚本
+        # Create startup script
         $batLines = @(
           "@echo off",
-          "echo 正在启动 Elasticsearch Query Helper (演示版)...",
+          "echo Starting Elasticsearch Query Helper Demo...",
           "echo.",
           "elasticsearch_query_helper.exe",
           "echo.",
-          "echo 程序已退出，按任意键关闭此窗口...",
+          "echo Program exited, press any key to close this window...",
           "pause >nul"
         )
         
         $startBatContent = $batLines -join "`n"
-        $startBatContent | Out-File "$packageDir\启动程序.bat" -Encoding Default
+        $startBatContent | Out-File "$packageDir\start.bat" -Encoding ASCII
         
-        Write-Host "发布包创建成功"
-        Write-Host "包内容:"
+        Write-Host "Release package created successfully"
+        Write-Host "Package contents:"
         Get-ChildItem $packageDir | ForEach-Object {
           if ($_.PSIsContainer) {
-            Write-Host "  📁 $($_.Name)/"
+            Write-Host "  Folder: $($_.Name)/"
           } else {
             $size = [math]::Round($_.Length / 1KB, 1)
-            Write-Host "  📄 $($_.Name) ($size KB)"
+            Write-Host "  File: $($_.Name) ($size KB)"
           }
         }
       shell: powershell
@@ -219,16 +219,16 @@ jobs:
       run: |
         $zipName = "elasticsearch-query-helper-windows-demo-v1.0.0.zip"
         
-        Write-Host "创建ZIP压缩包: $zipName"
+        Write-Host "Creating ZIP archive: $zipName"
         Compress-Archive -Path "elasticsearch-query-helper-windows\*" -DestinationPath $zipName -Force
         
         if (Test-Path $zipName) {
           $zipInfo = Get-Item $zipName
-          Write-Host "ZIP创建成功"
-          Write-Host "ZIP大小: $([math]::Round($zipInfo.Length / 1MB, 2)) MB"
-          Write-Host "ZIP路径: $($zipInfo.FullName)"
+          Write-Host "ZIP created successfully"
+          Write-Host "ZIP size: $([math]::Round($zipInfo.Length / 1MB, 2)) MB"
+          Write-Host "ZIP path: $($zipInfo.FullName)"
         } else {
-          throw "ZIP压缩包创建失败"
+          throw "Failed to create ZIP archive"
         }
       shell: powershell
     
@@ -248,25 +248,25 @@ jobs:
     
     - name: Build Summary
       run: |
-        Write-Host "=== 构建完成总结 ==="
-        Write-Host "✅ Flutter演示应用构建成功"
-        Write-Host "✅ Windows可执行文件生成"
-        Write-Host "✅ 发布包创建完成"
-        Write-Host "✅ ZIP压缩包生成"
+        Write-Host "=== Build Completed Successfully ==="
+        Write-Host "SUCCESS: Flutter demo application built"
+        Write-Host "SUCCESS: Windows executable generated"
+        Write-Host "SUCCESS: Release package created"
+        Write-Host "SUCCESS: ZIP archive generated"
         Write-Host ""
-        Write-Host "说明:"
-        Write-Host "这是一个不依赖任何代码仓库的演示版本。"
-        Write-Host "应用包含基本的Flutter界面结构。"
+        Write-Host "Description:"
+        Write-Host "This is a demo version that does not depend on any code repository."
+        Write-Host "The application contains basic Flutter interface structure."
         Write-Host ""
-        Write-Host "下载说明:"
-        Write-Host "1. 进入Actions页面"
-        Write-Host "2. 选择本次构建"
-        Write-Host "3. 在Artifacts部分下载ZIP文件"
-        Write-Host "4. 解压后运行 elasticsearch_query_helper.exe"
+        Write-Host "Download Instructions:"
+        Write-Host "1. Go to Actions page"
+        Write-Host "2. Select this build"
+        Write-Host "3. Download ZIP file from Artifacts section"
+        Write-Host "4. Extract and run elasticsearch_query_helper.exe"
         Write-Host ""
-        Write-Host "包含文件:"
-        Write-Host "- elasticsearch_query_helper.exe (演示应用)"
-        Write-Host "- README.txt (说明文档)"
-        Write-Host "- 启动程序.bat (便捷启动)"
-        Write-Host "- 其他运行时文件"
+        Write-Host "Package Contents:"
+        Write-Host "- elasticsearch_query_helper.exe (demo application)"
+        Write-Host "- README.txt (documentation)"
+        Write-Host "- start.bat (convenient startup script)"
+        Write-Host "- Other runtime files"
       shell: powershell
