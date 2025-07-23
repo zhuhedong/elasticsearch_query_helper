@@ -1,0 +1,14 @@
+flutter/
+*.user
+*.vcxproj.user
+*.vsxproj.user
+*.sln.docstates
+*.suo
+*.cache
+packages/
+.vs/
+.vscode/
+/build/
+
+# OpenSSL-Win64
+/packages/openssl-win64/
